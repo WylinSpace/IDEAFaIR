@@ -29,9 +29,9 @@ async function initApp() {
     updateStatus("Vision Loaded...");
     
     try {
-      cocoModel = await cocoSsd.load({ base: 'lite_mobilenet_v2' });
+      cocoModel = await cocoSsd.load({ base: 'mobilenet_v2' });
       updateStatus("COCO Loaded...");
-    } catch(e) { console.error("COCO-SSD Load Error", e); }
+    } catch(e) { console.error("COCO Load Error", e); }
 
     try {
       const worker = await Tesseract.createWorker('eng');
