@@ -40,14 +40,37 @@ export async function processROI(videoCanvasCtx, canvasW, canvasH, bboxRect, coc
       addBrailleStream(payload);
       
     } else if (cocoModel) {
-      // Fallback: Use COCO-SSD to detect objects over the cropped pointer vector area!
-      const predictions = await cocoModel.detect(cropCanvas);
+      // Fallback: Use COCO-SSD over the FULL frame to prevent hallucinations, 
+      // then spatially match the object closest to the finger vector (bboxRect center)
+      const predictions = await cocoModel.detect(videoCanvasCtx.canvas);
       
-      // Filter the best confident prediction
-      const best = predictions.sort((a,b) => b.score - a.score)[0];
+      const pointerX = bboxRect.x + (bboxRect.width / 2);
+      const pointerY = bboxRect.y + (bboxRect.height / 2);
       
-      if (best && best.score > 0.4) {
-         let objName = best.class.toUpperCase();
+      let bestObj = null;
+      let minDistance = Infinity;
+
+      predictions.forEach(pred => {
+         if (pred.score > 0.4) {
+            const [x, y, w, h] = pred.bbox;
+            const objCenterX = x + w/2;
+            const objCenterY = y + h/2;
+            const dist = Math.sqrt(Math.pow(pointerX - objCenterX, 2) + Math.pow(pointerY - objCenterY, 2));
+            
+            // Prioritize objects that the pointer explicitly lands directly inside of
+            if (pointerX >= x && pointerX <= x+w && pointerY >= y && pointerY <= y+h) {
+                bestObj = pred;
+                minDistance = 0; // Absolute hit
+            } else if (dist < minDistance && dist < (canvasW * 0.4)) {
+                // Secondary fallback: Closest object within range
+                bestObj = pred;
+                minDistance = dist;
+            }
+         }
+      });
+      
+      if (bestObj) {
+         let objName = bestObj.class.toUpperCase();
          speak(`Detected: ${objName}`, true);
          sendBleText(objName);
          addBrailleStream(objName);
