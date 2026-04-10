@@ -47,12 +47,12 @@ export async function processROI(videoCanvasCtx, canvasW, canvasH, bboxRect) {
     // Decision logic
     if (text.length > 2 && confidence > 60) {
       // Good OCR read
-      speak(`Text detected: ${text}`);
+      speak(`Text detected: ${text}`, true);
     } else {
       // Fallback to Scene Captioning 
-      speak("Processing scene description...");
+      speak("Processing scene description...", true);
       const caption = await describeSceneMock(confidence);
-      speak(caption);
+      speak(caption, true);
     }
   } catch (err) {
     console.error("AI processing error", err);
