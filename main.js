@@ -18,6 +18,9 @@ let lastVideoTime = -1;
 let cocoModel = null;
 let emptyGrid = new Uint8Array(15);
 let handCooldown = 0; 
+let isHunting = false;
+let isAiBusy = false;
+let huntStartTime = 0; 
 
 async function initApp() {
   try {
@@ -127,11 +130,40 @@ async function detectFrame() {
         ctx.stroke();
 
         const now = Date.now();
-        if (now - handCooldown > 4000) {
-          handCooldown = now;
-          playChirp('hand');
-          // Pass cocoModel so AI can detect objects if text is missing!
-          processROI(ctx, canvas.width, canvas.height, pointerResult.roiRect, cocoModel);
+        
+        // Only attempt to start/continue hunting if Cooldown has expired and AI engine is free.
+        if (now > handCooldown && !isAiBusy) {
+           if (!isHunting) {
+              isHunting = true;
+              huntStartTime = now;
+              speak("Scanning...", true);
+              playChirp('hand');
+           }
+           
+           if (now - huntStartTime > 7000) {
+              // 7 second timeout to avoid indefinite battery drain
+              speak("Nothing clearly identified.", true);
+              isHunting = false;
+              handCooldown = now + 4000; // Cooldown before trying again
+           } else {
+              isAiBusy = true;
+              updateStatus("Hunting (>60% Confidence)...");
+              
+              processROI(ctx, canvas.width, canvas.height, pointerResult.roiRect, cocoModel).then(successFound => {
+                 if (successFound) {
+                     isHunting = false;
+                     handCooldown = Date.now() + 6000; // 6 seconds cooldown so they can read the Braille!
+                     updateStatus("Object Identified!");
+                 }
+                 isAiBusy = false; // Free up the engine for the next frame if it failed!
+              });
+           }
+        }
+      } else {
+        // Finger lost from screen
+        if (isHunting && !isAiBusy) {
+           isHunting = false;
+           updateStatus("Finger Lost. Camera Active");
         }
       }
     }

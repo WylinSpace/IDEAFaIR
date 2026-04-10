@@ -50,8 +50,8 @@ export function detectFingerPointer(videoElement, videoTime, canvasW, canvasH) {
     targetX = Math.max(0, Math.min(1, targetX));
     targetY = Math.max(0, Math.min(1, targetY));
     
-    // Define an ROI around the target (e.g. 30% of screen width)
-    const roiSize = 0.3; 
+    // Define an ROI around the target (e.g. 45% of screen width)
+    const roiSize = 0.45; 
     let tX = targetX - (roiSize/2);
     let tY = targetY - (roiSize/2);
     
