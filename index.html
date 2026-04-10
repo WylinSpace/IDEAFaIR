@@ -3,13 +3,11 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <!-- Cache Control to prevent stale CSS loading -->
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
   
   <title>VibroNav - Edge AI Tactile Vision</title>
-  
   <link rel="stylesheet" href="style.v2.css">
   
   <!-- Object Detection Model -->
@@ -23,23 +21,44 @@
   
   <div class="app-container">
     <header class="app-header">
-      <h1 aria-level="1">VibroNav App</h1>
+      <h1 aria-level="1" id="appTitle">VibroNav App</h1>
       <button id="bleConnectBtn" class="btn primary" aria-label="Connect to ESP 32 Bluetooth Belt">Connect ESP32</button>
     </header>
 
-    <div class="video-container" aria-hidden="true">
+    <div class="video-container" aria-hidden="true" id="camContainer">
       <video id="videoElement" autoplay playsinline muted></video>
       <canvas id="overlayCanvas"></canvas>
-      
       <div id="statusOverlay" class="status-overlay">Initializing Modules...</div>
     </div>
 
-    <!-- UI feedback grid 3x5 for visualization of the data sent to ESP32 -->
+    <!-- Web UI Hardware Simulators -->
+    <div class="simulators" id="hwSimulators" aria-hidden="true">
+      <!-- 15 LED Proximity Grid -->
+      <div class="simulator-card" id="simMap">
+        <h3 class="sim-title">Obstacle Map</h3>
+        <div class="matrix-grid" id="matrixGrid"></div>
+      </div>
+      
+      <!-- 6 LED Braille Readout -->
+      <div class="simulator-card hidden" id="simBraille">
+        <h3 class="sim-title" id="brailleTitle">Braille Output</h3>
+        <div class="braille-grid" id="brailleGrid">
+          <div class="braille-dot" id="bdot1"></div>
+          <div class="braille-dot" id="bdot4"></div>
+          <div class="braille-dot" id="bdot2"></div>
+          <div class="braille-dot" id="bdot5"></div>
+          <div class="braille-dot" id="bdot3"></div>
+          <div class="braille-dot" id="bdot6"></div>
+        </div>
+        <div class="braille-text" id="brailleLetter">-</div>
+      </div>
+    </div>
+
+    <!-- Controls -->
     <div class="controls card" role="region" aria-label="Camera Controls">
       <button id="startCameraBtn" class="btn secondary" disabled aria-label="Start Camera">Start Camera</button>
       <button id="stopCameraBtn" class="btn secondary" disabled aria-label="Stop Camera">Stop Camera</button>
       
-      <!-- Virtual mock toggles in case hardware buttons aren't pushed -->
       <button onclick="import('./modules/ui.js').then(m=>m.toggleAccessibleMode())" class="btn outline" aria-label="Toggle Accessibility Display">Toggle Vision UI</button>
       <button onclick="import('./modules/ui.js').then(m=>m.toggleFeatureMode())" class="btn outline" aria-label="Toggle Feature Mode">Swap Feature</button>
     </div>

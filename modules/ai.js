@@ -1,61 +1,59 @@
 // ai.js - Tesseract OCR & Scene Fallback
 import { speak, playChirp } from './audio.js';
 import { sendBleText } from './ble.js';
+import { addBrailleStream } from './ui.js';
 
 let isProcessing = false;
 
-// Mock Scene Captioning (since running a visual language model in-browser is too heavy for mobile)
-async function describeSceneMock(confidence) {
-  return new Promise(resolve => {
-    setTimeout(() => {
-      resolve("Unable to read clear text. Looks like a complex object or scenery.");
-    }, 1000);
-  });
-}
-
 // Extract image data from canvas bounded by the ROI rectangle
-function getCroppedImage(canvasCtx, canvasWidth, canvasHeight, roi) {
-  // Create a temporary canvas
+function getCroppedImage(canvasCtx, canvasW, canvasH, roi) {
   const cropCanvas = document.createElement('canvas');
   cropCanvas.width = roi.width;
   cropCanvas.height = roi.height;
   const cropCtx = cropCanvas.getContext('2d');
   
-  // Extract pixels
   const imgData = canvasCtx.getImageData(roi.x, roi.y, roi.width, roi.height);
   cropCtx.putImageData(imgData, 0, 0);
   
-  return cropCanvas.toDataURL('image/png');
+  return cropCanvas;
 }
 
-export async function processROI(videoCanvasCtx, canvasW, canvasH, bboxRect) {
-  if (isProcessing) return; // Prevent overlapping heavy AI tasks
+export async function processROI(videoCanvasCtx, canvasW, canvasH, bboxRect, cocoModel) {
+  if (isProcessing) return; 
   isProcessing = true;
   
   playChirp('process');
   
-  // 1. Get cropped image
-  const imgDataURI = getCroppedImage(videoCanvasCtx, canvasW, canvasH, bboxRect);
+  const cropCanvas = getCroppedImage(videoCanvasCtx, canvasW, canvasH, bboxRect);
+  const imgDataURI = cropCanvas.toDataURL('image/png');
   
   try {
-    // 2. Run Tesseract.js (Available via global CDN script in HTML)
-    // Tesseract is heavy, it spins up web workers.
     const result = await document.TesseractRecognize(imgDataURI);
-    
     let text = result.data.text.trim();
     let confidence = result.data.confidence;
     
-    // Decision logic
     if (text.length > 2 && confidence > 60) {
-      // Good OCR read
       speak(`Text detected: ${text}`, true);
-      // Send text payload to ESP32 braille display (uppercase, truncated to 20 chars for MTU safety)
-      sendBleText(text.substring(0, 20).toUpperCase());
-    } else {
-      // Fallback to Scene Captioning 
-      speak("Processing scene description...", true);
-      const caption = await describeSceneMock(confidence);
-      speak(caption, true);
+      
+      let payload = text.substring(0, 20).toUpperCase();
+      sendBleText(payload);
+      addBrailleStream(payload);
+      
+    } else if (cocoModel) {
+      // Fallback: Use COCO-SSD to detect objects over the cropped pointer vector area!
+      const predictions = await cocoModel.detect(cropCanvas);
+      
+      // Filter the best confident prediction
+      const best = predictions.sort((a,b) => b.score - a.score)[0];
+      
+      if (best && best.score > 0.4) {
+         let objName = best.class.toUpperCase();
+         speak(`Detected: ${objName}`, true);
+         sendBleText(objName);
+         addBrailleStream(objName);
+      } else {
+         speak("No objects clearly identified.", true);
+      }
     }
   } catch (err) {
     console.error("AI processing error", err);
