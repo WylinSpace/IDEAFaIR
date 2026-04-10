@@ -1,5 +1,6 @@
 // ai.js - Tesseract OCR & Scene Fallback
 import { speak, playChirp } from './audio.js';
+import { sendBleText } from './ble.js';
 
 let isProcessing = false;
 
@@ -48,6 +49,8 @@ export async function processROI(videoCanvasCtx, canvasW, canvasH, bboxRect) {
     if (text.length > 2 && confidence > 60) {
       // Good OCR read
       speak(`Text detected: ${text}`, true);
+      // Send text payload to ESP32 braille display (uppercase, truncated to 20 chars for MTU safety)
+      sendBleText(text.substring(0, 20).toUpperCase());
     } else {
       // Fallback to Scene Captioning 
       speak("Processing scene description...", true);
